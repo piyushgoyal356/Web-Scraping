@@ -11,13 +11,14 @@ BOT_NAME = 'pepperfry_project'
 
 SPIDER_MODULES = ['pepperfry_project.spiders']
 NEWSPIDER_MODULE = 'pepperfry_project.spiders'
+USER_AGENT = 'Mozilla/5.0'
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 #USER_AGENT = 'pepperfry_project (+http://www.yourdomain.com)'
 
 # Obey robots.txt rules
-ROBOTSTXT_OBEY = True
+ROBOTSTXT_OBEY = False
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32
