@@ -1,6 +1,8 @@
 import scrapy
+import requests
 import pandas as pd
 import os
+import json
 
 class BookSpyder(scrapy.Spider):
     
@@ -33,7 +35,9 @@ class BookSpyder(scrapy.Spider):
         
         #20 products of each item type
         products = response.css("a.clip-prd-dtl::attr(title)").getall()[:20]
+        product_hrefs = response.css("a.clip-prd-dtl::attr(href)").getall()[:20]
         parent_dir_product = parent_dir+item_foldername
+        product_paths = []
         
         for i in range(0,len(products)):
             
@@ -47,6 +51,7 @@ class BookSpyder(scrapy.Spider):
                     p_string[products[i].find(j)] = '-'
                     products[i] = "".join(p_string)
             
+            path = ''
             try:
                 path = os.path.join(parent_dir_product,products[i])
                 os.mkdir(path)
@@ -57,23 +62,36 @@ class BookSpyder(scrapy.Spider):
                     path = os.path.join(parent_dir_product,products[i])
                     os.mkdir(path)
                 print(e)
-#        
-#        image_url = response.css("img.thumbnail::attr(src)").getall()
-#        book_title = response.css("article.product_pod h3 a::attr(title)").getall()
-#        product_price = response.css("p.price_color::text").getall()
-#        
-#        for i in range(0,len(image_url)):
-#            yield {
-#                'image_url' : image_url[i],
-#                'book_title' : book_title[i],
-#                'product_price' : product_price[i],
-#            }
+
+            product_paths.append(path)    
+                
+        for i in range(0,len(product_hrefs)):
+            product_response = scrapy.Request(url=product_hrefs[i], callback=self.parse_product)
+            product_response.cb_kwargs['prod_path'] = product_paths[i]
+            yield product_response
+            
+            
+    def parse_product(self,response,prod_path):
         
-#        next_page = response.css('li.next a::attr(href)').get()
-#        if next_page is not None:
-#            next_page = response.urljoin(next_page)
-#            yield scrapy.Request(next_page, callback=self.parse)
-#        
-#        with open(filename,'wb') as f:
-#            f.write(response.body)
-#        self.log("Saved file %s"%filename)
+        img_urls = response.css("li.vipImage__thumb-each a::attr(data-img)").getall()
+        if len(img_urls)>5:
+            img_urls = img_urls[:5]
+            
+        detail_labels = response.css("span.v-prod-comp-dtls-listitem-label::text").getall()
+        detail_label_values = response.css("span.v-prod-comp-dtls-listitem-value::text").getall()
+        
+        details = {}
+        for i in range(0,len(detail_labels)):
+            details[detail_labels[i]] = detail_label_values[i]
+            
+        details_path = os.path.join(prod_path,"details.json")
+        with open(details_path,'w') as f:
+            json.dump(details,f)
+        
+        for i in range(0,len(img_urls)):
+            
+            filename = os.path.join(prod_path,"image-%s.jpg"%i)
+            img = requests.get(img_urls[i])
+            
+            with open(filename,'wb') as f:
+                f.write(img.content)
